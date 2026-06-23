@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>灰岩多尺度耦合裂缝三维模拟</title>
+    <link rel="stylesheet" href="./src/styles.css" />
+    <script type="module" src="./src/main.js"></script>
+  </head>
+  <body>
+    <main id="app">
+      <section class="stage">
+        <div id="viewport" aria-label="三维裂缝模拟视窗"></div>
+        <div class="stage-metrics" aria-label="裂缝最大尺度">
+          <div><span>最大长度</span><strong id="stageMaxLength">0 m</strong></div>
+          <div><span>最大高度</span><strong id="stageMaxHeight">0 m</strong></div>
+        </div>
+        <div class="legend">
+          <span><i class="swatch hot"></i>裂缝宽度：浅窄深宽</span>
+          <span><i class="swatch cyan"></i>天然裂缝 DFN</span>
+          <span><i class="swatch green"></i>蚓孔/滤失活化区</span>
+        </div>
+        <div class="compass" aria-hidden="true">
+          <span class="north">N</span>
+          <span class="east">E</span>
+        </div>
+      </section>
+
+      <aside class="panel">
+        <header class="panel-head">
+          <p>H-M-C Coupled UFM</p>
+          <h1>灰岩压裂三维可视化</h1>
+        </header>
+
+        <div class="toolbar" aria-label="模拟控制">
+          <button id="toggleRun" type="button" title="播放或暂停模拟">暂停</button>
+          <button id="reset" type="button" title="重置裂缝网络">重置</button>
+          <button id="randomNF" type="button" title="随机刷新天然裂缝位置">随机天然缝</button>
+          <button id="snapshot" type="button" title="导出当前图片">导图</button>
+        </div>
+
+        <div class="tabs" role="tablist">
+          <button class="tab active" type="button" data-tab="params">参数</button>
+          <button class="tab" type="button" data-tab="model">模型</button>
+          <button class="tab" type="button" data-tab="insight">规律</button>
+        </div>
+
+        <section class="tab-panel active" data-panel="params">
+          <label>
+            天然裂缝密度
+            <input id="nfDensity" type="range" min="0.25" max="1.8" step="0.05" value="1.05" />
+            <output id="nfDensityOut"></output>
+          </label>
+          <label>
+            水平主应力差 MPa
+            <input id="stressDiff" type="range" min="1" max="18" step="0.5" value="8.5" />
+            <output id="stressDiffOut"></output>
+          </label>
+          <label>
+            注入净压力 MPa
+            <input id="netPressure" type="range" min="4" max="26" step="0.5" value="15" />
+            <output id="netPressureOut"></output>
+          </label>
+          <label>
+            注入排量 m3/min
+            <input id="injectionRate" type="range" min="2" max="18" step="0.5" value="8" />
+            <output id="injectionRateOut"></output>
+          </label>
+          <label>
+            加砂量 t
+            <input id="sandAmount" type="range" min="0" max="90" step="2" value="35" />
+            <output id="sandAmountOut"></output>
+          </label>
+          <label>
+            注入液量 m3
+            <input id="fluidVolume" type="range" min="100" max="1200" step="20" value="450" />
+            <output id="fluidVolumeOut"></output>
+          </label>
+          <label>
+            酸液浓度/反应强度
+            <input id="acidStrength" type="range" min="0" max="1" step="0.02" value="0.56" />
+            <output id="acidStrengthOut"></output>
+          </label>
+          <label>
+            缝面摩擦系数
+            <input id="friction" type="range" min="0.12" max="0.86" step="0.02" value="0.48" />
+            <output id="frictionOut"></output>
+          </label>
+          <label>
+            幂律流性指数 n'
+            <input id="flowIndex" type="range" min="0.35" max="1" step="0.01" value="0.62" />
+            <output id="flowIndexOut"></output>
+          </label>
+          <label>
+            演化时间
+            <input id="timeScale" type="range" min="0" max="1" step="0.01" value="0.74" />
+            <output id="timeScaleOut"></output>
+          </label>
+
+          <div class="switches">
+            <label><input id="showNF" type="checkbox" checked />天然裂缝</label>
+            <label><input id="showLeakoff" type="checkbox" checked />滤失蚓孔</label>
+            <label><input id="showStress" type="checkbox" checked />应力阴影</label>
+          </div>
+        </section>
+
+        <section class="tab-panel" data-panel="model">
+          <div class="equation">∂w/∂t + ∇·q + qL = 0</div>
+          <div class="equation">∂p/∂s ∝ - |q|<sup>n'-1</sup>q / w<sup>2n'+1</sup></div>
+          <div class="equation">|τβ + τ| &lt; μ(σnβ + σn) + S0</div>
+          <div class="equation">∂Wetched/∂t ∝ α R(Cw) / ρr(1-φ)</div>
+          <p class="note">
+            该原型采用文档中的 UFM/H-M-C 关系建立可视化近似：DDM 应力阴影控制宽度衰减，Gu-Weng/Renshaw-Pollard 条件控制穿越或偏转，酸岩反应控制刻蚀宽度、摩擦软化与滤失增强。
+          </p>
+        </section>
+
+        <section class="tab-panel" data-panel="insight">
+          <dl class="metrics">
+            <div><dt>SRV 体积指数</dt><dd id="srvValue">0</dd></div>
+            <div><dt>活化分支数</dt><dd id="branchValue">0</dd></div>
+            <div><dt>穿越/偏转比</dt><dd id="crossValue">0</dd></div>
+            <div><dt>平均酸蚀缝宽 mm</dt><dd id="etchedValue">0</dd></div>
+            <div><dt>最大裂缝长度</dt><dd id="maxLengthValue">0 m</dd></div>
+            <div><dt>最大裂缝高度</dt><dd id="maxHeightValue">0 m</dd></div>
+            <div><dt>支撑导流指数</dt><dd id="proppantValue">0</dd></div>
+          </dl>
+          <p id="ruleText" class="rule-text"></p>
+        </section>
+      </aside>
+    </main>
+  </body>
+</html>
