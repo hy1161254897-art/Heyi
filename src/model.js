@@ -73,17 +73,42 @@ export function buildFractureNetwork(params) {
   const rateFactor = clamp((params.injectionRate || 8) / 8, 0.25, 2.25);
   const sandFactor = clamp((params.sandAmount || 0) / 35, 0, 2.6);
   const fluidFactor = clamp((params.fluidVolume || 450) / 450, 0.2, 2.8);
+  const youngModulus = params.youngModulus || 32;
+  const poissonRatio = params.poissonRatio || 0.24;
+  const fractureToughness = params.fractureToughness || 1.15;
+  const leakoffCoeff = params.leakoffCoeff || 0.006;
+  const layerContrast = params.layerContrast || 0;
+  const planeStrainModulus = youngModulus / Math.max(0.2, 1 - poissonRatio * poissonRatio);
+  const stiffnessFactor = clamp(planeStrainModulus / 34, 0.42, 2.2);
+  const complianceFactor = clamp(1 / Math.sqrt(stiffnessFactor), 0.58, 1.55);
+  const toughnessFactor = clamp(fractureToughness / 1.15, 0.3, 2.5);
+  const leakoffFactor = clamp(leakoffCoeff / 0.006, 0.12, 4.2);
+  const toughnessLoss = clamp((toughnessFactor - 0.7) * 0.16, -0.08, 0.34);
+  const leakoffLoss = clamp((leakoffFactor - 0.5) * 0.07, 0, 0.28);
+  const heightContainment = clamp(1.12 - layerContrast * 0.42 - Math.max(0, poissonRatio - 0.24) * 0.9, 0.48, 1.18);
+  const lateralLayerGuide = clamp(1 + layerContrast * 0.16 - leakoffLoss * 0.25, 0.82, 1.18);
   const proppantSupport = smoothstep(0.15, 1.45, sandFactor);
   const screenoutRisk = clamp(sandFactor * 0.42 - rateFactor * 0.18 - fluidFactor * 0.12, 0, 0.42);
   const volumeDrive = clamp(0.72 + fluidFactor * 0.28, 0.75, 1.5);
   const rateDrive = clamp(0.78 + rateFactor * 0.22, 0.82, 1.35);
-  const maxSteps = Math.round(18 + params.timeScale * 19 + fluidFactor * 7 + rateFactor * 3 - screenoutRisk * 10);
+  const maxSteps = Math.round(
+    18 + params.timeScale * 19 + fluidFactor * 7 + rateFactor * 3
+    - screenoutRisk * 10 - toughnessLoss * 16 - leakoffLoss * 18
+  );
   const acidSoftening = params.acidStrength * 0.72;
   const effectiveFriction = clamp(params.friction - acidSoftening * 0.48, 0.06, 0.86);
   const stressBarrier = params.stressDiff / 18;
-  const pressureDrive = clamp((params.netPressure / 26) * rateDrive * (1 - screenoutRisk * 0.45), 0.05, 1.45);
+  const pressureEfficiency = clamp(1 - toughnessLoss - leakoffLoss - layerContrast * 0.04, 0.48, 1.12);
+  const pressureDrive = clamp(
+    (params.netPressure / 26) * rateDrive * complianceFactor * pressureEfficiency * (1 - screenoutRisk * 0.45),
+    0.05,
+    1.45
+  );
   const viscosityDrag = 1.2 - params.flowIndex;
-  const maxBranches = Math.round(100 + fluidFactor * 18 + rateFactor * 8 + proppantSupport * 8);
+  const maxBranches = Math.round(
+    100 + fluidFactor * 18 + rateFactor * 8 + proppantSupport * 8
+    - toughnessLoss * 40 - leakoffLoss * 34 + layerContrast * 8
+  );
   const wingTips = [];
 
   for (const side of [-1, 1]) {
@@ -93,7 +118,9 @@ export function buildFractureNetwork(params) {
     for (let i = 0; i < segments; i += 1) {
       const t0 = i / segments;
       const t1 = (i + 1) / segments;
-      const length = (39 * params.timeScale + 16 * pressureDrive) * volumeDrive * (1 - screenoutRisk * 0.3);
+      const length = (
+        39 * params.timeScale + 16 * pressureDrive
+      ) * volumeDrive * lateralLayerGuide * (1 - screenoutRisk * 0.3 - toughnessLoss * 0.32 - leakoffLoss * 0.22);
       const nx = side * length * t1;
       const nz = side * 0.18 * Math.sin(t1 * Math.PI);
       const acid = clamp(params.acidStrength * (0.88 - t1 * 0.32), 0, 1);
@@ -105,8 +132,8 @@ export function buildFractureNetwork(params) {
       branches.push({
         from: { x: px, z: pz },
         to: { x: nx, z: nz },
-        height: 7.2 + 8.5 * hydraulicWidth + 4.5 * acid + proppantSupport * 2.2,
-        width: 1.0 + 2.7 * hydraulicWidth + 1.7 * acid + proppantSupport * 0.85,
+        height: (7.2 + 8.5 * hydraulicWidth + 4.5 * acid + proppantSupport * 2.2) * heightContainment,
+        width: (1.0 + 2.7 * hydraulicWidth + 1.7 * acid + proppantSupport * 0.85) * complianceFactor,
         generation: 0,
         event: 'primary',
         pathId: side < 0 ? 'primary-left' : 'primary-right',
@@ -152,8 +179,12 @@ export function buildFractureNetwork(params) {
       const stressShadow = params.showStress
         ? 0.18 * Math.exp(-Math.abs(radius - 14) / 18) * (1 + tip.generation * 0.18)
         : 0;
-      const leakoff = params.acidStrength * (0.06 + 0.1 * params.nfDensity) * (0.5 + radius / 66) / rateDrive;
-      const stepLength = (2.0 + pressureDrive * 2.2 + fluidFactor * 0.35) * clamp(energy, 0.32, 1.35);
+      const leakoff = (
+        params.acidStrength * (0.06 + 0.1 * params.nfDensity) + leakoffFactor * 0.045
+      ) * (0.5 + radius / 66) / rateDrive;
+      const stepLength = (
+        2.0 + pressureDrive * 2.2 + fluidFactor * 0.35
+      ) * lateralLayerGuide * (1 - toughnessLoss * 0.45) * clamp(energy, 0.32, 1.35);
       const wobble = (random() - 0.5) * (0.16 + params.nfDensity * 0.08);
       const nextDir = dir + wobble - stressShadow * Math.sign(Math.sin(dir));
       const nx = x + Math.cos(nextDir) * stepLength;
@@ -171,7 +202,7 @@ export function buildFractureNetwork(params) {
         const sigmaN = 0.5 + stressBarrier * (0.4 - 0.5 * Math.cos(2 * theta));
         const tau = stressBarrier * 0.5 * Math.sin(2 * theta);
         const noSlip = effectiveFriction * sigmaN + 0.2 * (1 - params.acidStrength) - Math.abs(tau);
-        const reinitiation = pressureDrive + theta / Math.PI + rateFactor * 0.06 - 0.55 - viscosityDrag * 0.24;
+        const reinitiation = pressureDrive + theta / Math.PI + rateFactor * 0.06 - 0.55 - viscosityDrag * 0.24 - toughnessLoss * 0.38;
         const crossScore = noSlip + reinitiation + nearest.roughness * 0.15;
 
         actualEnd = { x: nearest.x, z: nearest.z };
@@ -189,7 +220,7 @@ export function buildFractureNetwork(params) {
 
         if (
           tip.generation < 3
-          && random() < 0.44 + params.acidStrength * 0.28 + params.nfDensity * 0.08 + fluidFactor * 0.04
+          && random() < 0.44 + params.acidStrength * 0.28 + params.nfDensity * 0.08 + fluidFactor * 0.04 - toughnessLoss * 0.36 - leakoffLoss * 0.18
         ) {
           queue.push({
             x: actualEnd.x,
@@ -205,8 +236,8 @@ export function buildFractureNetwork(params) {
       const acid = clamp(params.acidStrength * (0.42 + energy * 0.52) * Math.exp(-radius / 74), 0, 1);
       const hydraulicWidth = Math.max(0.03, pressureDrive * energy - stressShadow * 0.32 + proppantSupport * 0.05);
       const etchedWidth = acid * (0.35 + nearestNaturalDensity(natural, x, z) * 0.75);
-      const height = 2.2 + 7.8 * hydraulicWidth + 6.0 * acid + tip.generation * 0.45 + proppantSupport * 1.2;
-      const width = 0.38 + 2.2 * hydraulicWidth + 1.3 * etchedWidth + proppantSupport * 0.45;
+      const height = (2.2 + 7.8 * hydraulicWidth + 6.0 * acid + tip.generation * 0.45 + proppantSupport * 1.2) * heightContainment;
+      const width = (0.38 + 2.2 * hydraulicWidth + 1.3 * etchedWidth + proppantSupport * 0.45) * complianceFactor * (1 - leakoffLoss * 0.35);
 
       branches.push({
         from: { x, z },
@@ -272,9 +303,20 @@ export function buildFractureNetwork(params) {
       avgEtched: avgEtched * 7.5,
       maxLength,
       maxHeight,
-      proppantIndex: proppantSupport * (1 - screenoutRisk) * (0.65 + pressureDrive * 0.35)
+      proppantIndex: proppantSupport * (1 - screenoutRisk) * (0.65 + pressureDrive * 0.35),
+      containmentIndex: heightContainment,
+      pressureEfficiency
     },
-    effectiveFriction
+    effectiveFriction,
+    mechanics: {
+      planeStrainModulus,
+      stiffnessFactor,
+      complianceFactor,
+      toughnessFactor,
+      leakoffFactor,
+      heightContainment,
+      pressureEfficiency
+    }
   };
 }
 
@@ -326,6 +368,7 @@ export function createReservoirScene(scene, network, params) {
   grid.material.opacity = 0.34;
   group.add(grid);
 
+  group.add(createLithologyLayers(params, network.metrics.maxHeight));
   if (params.showNF) group.add(createNaturalFractures(network.natural));
   if (params.showStress) group.add(createStressShadow(network.branches));
   if (params.showLeakoff) group.add(createLeakoffCloud(network.branches, params));
@@ -333,6 +376,56 @@ export function createReservoirScene(scene, network, params) {
   group.add(createWellbore());
 
   scene.add(group);
+  return group;
+}
+
+function createLithologyLayers(params, maxHeight) {
+  const group = new THREE.Group();
+  const layerContrast = params.layerContrast || 0;
+  const halfHeight = Math.max(8, maxHeight * 0.64);
+  const panelZ = -46;
+  const colors = ['#13282a', '#1f3c32', '#2b2f36', '#15313a', '#273824'];
+  const layers = [
+    { y0: -halfHeight, y1: -halfHeight * 0.48, barrier: 0.35 },
+    { y0: -halfHeight * 0.48, y1: -halfHeight * 0.16, barrier: 0.72 },
+    { y0: -halfHeight * 0.16, y1: halfHeight * 0.18, barrier: 0.18 },
+    { y0: halfHeight * 0.18, y1: halfHeight * 0.5, barrier: 0.82 },
+    { y0: halfHeight * 0.5, y1: halfHeight, barrier: 0.42 }
+  ];
+
+  for (let i = 0; i < layers.length; i += 1) {
+    const layer = layers[i];
+    const height = layer.y1 - layer.y0;
+    const wall = new THREE.Mesh(
+      new THREE.PlaneGeometry(92, height),
+      new THREE.MeshBasicMaterial({
+        color: colors[i],
+        transparent: true,
+        opacity: 0.12 + layerContrast * layer.barrier * 0.14,
+        side: THREE.DoubleSide,
+        depthWrite: false
+      })
+    );
+    wall.position.set(0, (layer.y0 + layer.y1) / 2, panelZ);
+    group.add(wall);
+
+    if (i > 0) {
+      const barrier = new THREE.Mesh(
+        new THREE.PlaneGeometry(92, 92),
+        new THREE.MeshBasicMaterial({
+          color: '#7cffd9',
+          transparent: true,
+          opacity: layerContrast * layer.barrier * 0.035,
+          side: THREE.DoubleSide,
+          depthWrite: false
+        })
+      );
+      barrier.rotation.x = -Math.PI / 2;
+      barrier.position.y = layer.y0;
+      group.add(barrier);
+    }
+  }
+
   return group;
 }
 
@@ -436,14 +529,16 @@ function createLeakoffCloud(branches, params) {
   const colors = [];
   const colorA = new THREE.Color('#44ff76');
   const colorB = new THREE.Color('#ffee48');
+  const leakoffFactor = clamp((params.leakoffCoeff || 0.006) / 0.006, 0.12, 4.2);
 
   for (const branch of branches) {
     if (branch.acid < 0.16) continue;
-    const dots = Math.round(2 + branch.acid * 5);
+    const dots = Math.round(2 + branch.acid * 5 + leakoffFactor * 1.2);
     for (let i = 0; i < dots; i += 1) {
       const t = (i + 0.5) / dots;
-      const x = branch.from.x + (branch.to.x - branch.from.x) * t + Math.sin(i * 7.1) * params.acidStrength * 1.7;
-      const z = branch.from.z + (branch.to.z - branch.from.z) * t + Math.cos(i * 5.3) * params.acidStrength * 1.7;
+      const plume = params.acidStrength * 1.2 + leakoffFactor * 0.45;
+      const x = branch.from.x + (branch.to.x - branch.from.x) * t + Math.sin(i * 7.1) * plume;
+      const z = branch.from.z + (branch.to.z - branch.from.z) * t + Math.cos(i * 5.3) * plume;
       const y = 0.2 + Math.sin(t * Math.PI) * branch.height * 0.12;
       positions.push(x, y, z);
       const color = colorA.clone().lerp(colorB, branch.acid);
@@ -514,6 +609,15 @@ function createWellbore() {
 
 export function describeRegime(params, network) {
   const ratio = network.metrics.crossRatio;
+  if (params.fractureToughness > 2.0 || params.leakoffCoeff > 0.016) {
+    return '断裂韧性或滤失系数偏高时，裂缝尖端能量消耗增加，远端延伸和分支数量下降，近井酸蚀/滤失显示更强。';
+  }
+  if (params.layerContrast > 0.65) {
+    return '岩性分层和隔层强度较高，裂缝高度被明显约束，主裂缝更倾向沿有利层横向扩展，层间穿透能力减弱。';
+  }
+  if (params.youngModulus > 48) {
+    return '杨氏模量较高代表岩石更硬，缝宽减小、净压力利用率降低；若排量不足，裂缝更容易表现为窄而长的形态。';
+  }
   if (params.acidStrength > 0.72 && params.netPressure < 12) {
     return '酸蚀增强但净压力不足，近井滤失和蚓孔发育占优，远端水力裂缝容易出现停滞。';
   }

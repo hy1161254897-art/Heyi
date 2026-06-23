@@ -29,6 +29,11 @@ const ui = {
   injectionRate: document.querySelector('#injectionRate'),
   sandAmount: document.querySelector('#sandAmount'),
   fluidVolume: document.querySelector('#fluidVolume'),
+  youngModulus: document.querySelector('#youngModulus'),
+  poissonRatio: document.querySelector('#poissonRatio'),
+  fractureToughness: document.querySelector('#fractureToughness'),
+  leakoffCoeff: document.querySelector('#leakoffCoeff'),
+  layerContrast: document.querySelector('#layerContrast'),
   acidStrength: document.querySelector('#acidStrength'),
   friction: document.querySelector('#friction'),
   flowIndex: document.querySelector('#flowIndex'),
@@ -45,6 +50,11 @@ const outputs = {
   injectionRate: document.querySelector('#injectionRateOut'),
   sandAmount: document.querySelector('#sandAmountOut'),
   fluidVolume: document.querySelector('#fluidVolumeOut'),
+  youngModulus: document.querySelector('#youngModulusOut'),
+  poissonRatio: document.querySelector('#poissonRatioOut'),
+  fractureToughness: document.querySelector('#fractureToughnessOut'),
+  leakoffCoeff: document.querySelector('#leakoffCoeffOut'),
+  layerContrast: document.querySelector('#layerContrastOut'),
   acidStrength: document.querySelector('#acidStrengthOut'),
   friction: document.querySelector('#frictionOut'),
   flowIndex: document.querySelector('#flowIndexOut'),
@@ -58,6 +68,8 @@ const outputs = {
   proppant: document.querySelector('#proppantValue'),
   stageMaxLength: document.querySelector('#stageMaxLength'),
   stageMaxHeight: document.querySelector('#stageMaxHeight'),
+  containment: document.querySelector('#containmentValue'),
+  pressureEfficiency: document.querySelector('#pressureEfficiencyValue'),
   rule: document.querySelector('#ruleText')
 };
 
@@ -75,6 +87,11 @@ function readParams() {
     injectionRate: Number(ui.injectionRate.value),
     sandAmount: Number(ui.sandAmount.value),
     fluidVolume: Number(ui.fluidVolume.value),
+    youngModulus: Number(ui.youngModulus.value),
+    poissonRatio: Number(ui.poissonRatio.value),
+    fractureToughness: Number(ui.fractureToughness.value),
+    leakoffCoeff: Number(ui.leakoffCoeff.value),
+    layerContrast: Number(ui.layerContrast.value),
     acidStrength: Number(ui.acidStrength.value),
     friction: Number(ui.friction.value),
     flowIndex: Number(ui.flowIndex.value),
@@ -93,6 +110,11 @@ function updateOutputs(params) {
   outputs.injectionRate.textContent = params.injectionRate.toFixed(1);
   outputs.sandAmount.textContent = params.sandAmount.toFixed(0);
   outputs.fluidVolume.textContent = params.fluidVolume.toFixed(0);
+  outputs.youngModulus.textContent = params.youngModulus.toFixed(0);
+  outputs.poissonRatio.textContent = params.poissonRatio.toFixed(2);
+  outputs.fractureToughness.textContent = params.fractureToughness.toFixed(2);
+  outputs.leakoffCoeff.textContent = params.leakoffCoeff.toFixed(3);
+  outputs.layerContrast.textContent = params.layerContrast.toFixed(2);
   outputs.acidStrength.textContent = params.acidStrength.toFixed(2);
   outputs.friction.textContent = params.friction.toFixed(2);
   outputs.flowIndex.textContent = params.flowIndex.toFixed(2);
@@ -107,6 +129,8 @@ function updateOutputs(params) {
   outputs.proppant.textContent = network.metrics.proppantIndex.toFixed(2);
   outputs.stageMaxLength.textContent = `${network.metrics.maxLength.toFixed(1)} m`;
   outputs.stageMaxHeight.textContent = `${network.metrics.maxHeight.toFixed(1)} m`;
+  outputs.containment.textContent = network.metrics.containmentIndex.toFixed(2);
+  outputs.pressureEfficiency.textContent = network.metrics.pressureEfficiency.toFixed(2);
   outputs.rule.textContent = describeRegime(params, network);
 }
 
@@ -153,6 +177,11 @@ document.querySelector('#reset').addEventListener('click', () => {
   ui.injectionRate.value = 8;
   ui.sandAmount.value = 35;
   ui.fluidVolume.value = 450;
+  ui.youngModulus.value = 32;
+  ui.poissonRatio.value = 0.24;
+  ui.fractureToughness.value = 1.15;
+  ui.leakoffCoeff.value = 0.006;
+  ui.layerContrast.value = 0.38;
   ui.acidStrength.value = 0.56;
   ui.friction.value = 0.48;
   ui.flowIndex.value = 0.62;

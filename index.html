@@ -77,6 +77,31 @@
             <output id="fluidVolumeOut"></output>
           </label>
           <label>
+            杨氏模量 GPa
+            <input id="youngModulus" type="range" min="12" max="70" step="1" value="32" />
+            <output id="youngModulusOut"></output>
+          </label>
+          <label>
+            泊松比
+            <input id="poissonRatio" type="range" min="0.16" max="0.36" step="0.01" value="0.24" />
+            <output id="poissonRatioOut"></output>
+          </label>
+          <label>
+            断裂韧性 MPa·m0.5
+            <input id="fractureToughness" type="range" min="0.35" max="2.8" step="0.05" value="1.15" />
+            <output id="fractureToughnessOut"></output>
+          </label>
+          <label>
+            滤失系数 m/min0.5
+            <input id="leakoffCoeff" type="range" min="0.001" max="0.025" step="0.001" value="0.006" />
+            <output id="leakoffCoeffOut"></output>
+          </label>
+          <label>
+            岩性分层/隔层强度
+            <input id="layerContrast" type="range" min="0" max="1" step="0.02" value="0.38" />
+            <output id="layerContrastOut"></output>
+          </label>
+          <label>
             酸液浓度/反应强度
             <input id="acidStrength" type="range" min="0" max="1" step="0.02" value="0.56" />
             <output id="acidStrengthOut"></output>
@@ -123,6 +148,8 @@
             <div><dt>最大裂缝长度</dt><dd id="maxLengthValue">0 m</dd></div>
             <div><dt>最大裂缝高度</dt><dd id="maxHeightValue">0 m</dd></div>
             <div><dt>支撑导流指数</dt><dd id="proppantValue">0</dd></div>
+            <div><dt>层间限制系数</dt><dd id="containmentValue">0</dd></div>
+            <div><dt>净压力效率</dt><dd id="pressureEfficiencyValue">0</dd></div>
           </dl>
           <p id="ruleText" class="rule-text"></p>
         </section>
