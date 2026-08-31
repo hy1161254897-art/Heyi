@@ -7,7 +7,7 @@
     <title>压裂工程数字工作台 · 贺某制做</title>
     <meta
       name="description"
-      content="集成裂缝三维模拟与压裂施工曲线 MACD 分析的工程数字工作台。"
+      content="集成裂缝三维模拟、施工曲线多指标分析与停泵压降双对数反演的工程数字工作台。"
     />
     <link rel="stylesheet" href="./portal.css" />
     <script type="module" src="./portal.js"></script>
@@ -30,7 +30,7 @@
 
         <div class="system-state" aria-label="系统状态">
           <i aria-hidden="true"></i>
-          <span>双模块在线</span>
+          <span>三模块在线</span>
           <small>贺某制做</small>
         </div>
       </header>
@@ -67,6 +67,23 @@
           <span class="tab-copy">
             <strong>施工曲线 MACD</strong>
             <small>压力趋势识别 · DIF / DEA / 动能柱</small>
+          </span>
+        </button>
+
+        <button
+          id="tab-falloff"
+          class="module-tab"
+          type="button"
+          role="tab"
+          aria-selected="false"
+          aria-controls="panel-falloff"
+          data-module="falloff"
+        >
+          <span class="tab-index">03</span>
+          <span class="tab-code">ΔP</span>
+          <span class="tab-copy">
+            <strong>停泵压降双对数</strong>
+            <small>Bourdet 导数 · G函数 · 裂缝反演</small>
           </span>
         </button>
 
@@ -111,6 +128,20 @@
           <iframe
             data-src="./fracpulse/"
             title="压裂施工曲线 MACD 分析模块"
+            loading="lazy"
+          ></iframe>
+        </section>
+
+        <section
+          id="panel-falloff"
+          class="module-panel"
+          role="tabpanel"
+          aria-labelledby="tab-falloff"
+          hidden
+        >
+          <iframe
+            data-src="./falloff/"
+            title="停泵压降双对数分析模块"
             loading="lazy"
           ></iframe>
         </section>

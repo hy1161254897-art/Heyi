@@ -11,6 +11,12 @@ const modules = {
     description: "导入时间、压力、排量与砂浓度数据，识别趋势和动能变化。",
     href: "./fracpulse/",
   },
+  falloff: {
+    code: "MODULE / 03",
+    title: "停泵压降双对数分析",
+    description: "自动识别停泵段，绘制压力降落与 Bourdet 导数图版并反演裂缝参数。",
+    href: "./falloff/",
+  },
 };
 
 const tabs = [...document.querySelectorAll(".module-tab")];
